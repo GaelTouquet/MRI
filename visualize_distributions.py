@@ -24,8 +24,10 @@ for n_interleaf in [4,8,16,32]:
     monicas = SpiralPhyllotaxisPattern(N_total,n_interleaf,time_per_acquisition=time_per_acquisition,alternated_points=True)
     monicas.draw(title='N_total = {} , {} interleaves'.format(N_total,n_interleaf), colour='interleaf')
 
-# articles to show n_interleaf does not change pattern, just interleave style
-fibo = [1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597]
+#articles to show n_interleaf does not change pattern, just interleave style
+def only_first_interleaf(point):
+    return point.interleaf == 0
+fibo = [377]
 for n_interleaf in fibo:
-    article = SpiralPhyllotaxisPattern(1597,n_interleaf,time_per_acquisition=time_per_acquisition,alternated_points=False)
-    article.draw(title='Article N_total = {} , {} interleaf'.format(1597,n_interleaf), colour='interleaf', alpha=0.9, marker_size=1)
+    article = SpiralPhyllotaxisPattern(1508,n_interleaf,time_per_acquisition=time_per_acquisition,alternated_points=True)
+    article.draw(title='Article N_total = {} , {} interleaf'.format(1508,n_interleaf), alpha=0.9, marker_size=10)
