@@ -34,7 +34,11 @@ class Pattern:
                 points['ys'].append(point.y)
                 points['zs'].append(point.z)
                 for var in extra_vars:
-                    points[var].append(getattr(point,var))
+                    if var == 'first_interleave':
+                        points[var].append('r' if point.interleaf == 0 else 'b')
+                    else:
+                        points[var].append(getattr(point,var))
+
         return points
 
     def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None):
@@ -51,7 +55,7 @@ class Pattern:
             setattr(point, '{}_phase'.format(cycle_name), phase if not phases_names else phases_names[phase])
 
 
-    def draw(self, title = None, filter_func=None, colour = None, marker_size=0.1,alpha=0.6):
+    def draw(self, title = None, filter_func=None, colour = 'first_interleave', marker_size=0.1,alpha=0.6):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         if colour:
@@ -89,9 +93,8 @@ class FunctionalPattern(Pattern):
 
 class SphericalCentralPattern(FunctionalPattern):
     """Class to make and hold spherical patterns."""
-    def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, alternated_points = True, rmax = 1.):
+    def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, rmax = 1.):
         self.add_readout_ends = add_readout_ends
-        self.alternated_points = alternated_points
         self.rmax = rmax
         super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition)
 
@@ -99,28 +102,18 @@ class SphericalCentralPattern(FunctionalPattern):
         self.points = []
         for n in range(self.n_points):
             point = self.point_function(n)
-            if self.add_readout_ends or self.alternated_points:
+            if self.add_readout_ends:
                 inverted_point = point.inverted_point()
             if hasattr(self, 'time_per_acquisition'):
                 point.t = self.total_time
-                if self.add_readout_ends or self.alternated_points:
+                if self.add_readout_ends:
                     inverted_point.t = self.total_time
                     if hasattr(point,'interleaf'):
                         inverted_point.interleaf = point.interleaf
                 self.total_time += self.time_per_acquisition
-            if self.alternated_points:
-                if (n % 2 == 1):
-                    self.points.append(inverted_point)
-                    if self.add_readout_ends:
-                        self.points.append(point)
-                else:
-                    self.points.append(point)
-                    if self.add_readout_ends:
-                        self.points.append(inverted_point)
-            else:
-                self.points.append(point)
-                if self.add_readout_ends:
-                    self.points.append(inverted_point)
+            self.points.append(point)
+            if self.add_readout_ends:
+                self.points.append(inverted_point)
 
 class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/10.1002/mrm.22898"""
@@ -129,7 +122,15 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         self.interleaves = {}
         for k in range(self.n_interleaf):
             self.interleaves[k] = []
-        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, alternated_points=alternated_points, rmax=rmax)
+        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
+        if alternated_points:
+            self.alternate_points()
+
+    def alternate_points(self):
+        for i, interleaf in self.interleaves.items():
+            for k in range(len(interleaf)):
+                if k % 2 == 1:
+                    interleaf[k].invert()
 
     def point_function(self, n):
         r = self.rmax

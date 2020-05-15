@@ -18,10 +18,18 @@ class Point:
             raise AttributeError('Not enough coodrinates to make a point!')
 
     def inverted_point(self):
-        x = -1.*self.x
-        y = -1*self.y
-        z = -1.*self.z
+        x = -1. * self.x
+        y = -1. * self.y
+        z = -1. * self.z
         return Point(x=x, y=y, z=z)
+
+    def invert(self):
+        self.x = -1. * self.x
+        self.y = -1. * self.y
+        self.z = -1. * self.z
+        self.r, self.phi, self.theta = cartesian_to_spherical(self.x, self.y, self.z)
+        self.r_cyl, self.phi, self.z = cartesian_to_cylindrical(self.x,self.y,self.z)
+
 
     def __str__(self):
         return 'x:{},y:{},z:{}'.format(self.x,self.y,self.z)
