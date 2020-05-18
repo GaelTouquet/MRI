@@ -6,11 +6,8 @@ from Tools.toolbox import golden_angle
 
 class Pattern:
     """Base class for all patterns."""
-    def __init__(self, time_per_acquisition=None):
+    def __init__(self):
         self.points = []
-        if time_per_acquisition:
-            self.time_per_acquisition = time_per_acquisition
-            self.total_time = 0
 
     def clone(self, filter_func):
         """Create a new pattern which is copied from the pattern but all points pass the given filter function."""
@@ -38,24 +35,24 @@ class Pattern:
                         points[var].append('r' if point.interleaf == 0 else 'b')
                     else:
                         points[var].append(getattr(point,var))
-
         return points
 
-    def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None):
+    def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None, temporal_resolution=None):
         n_phase = len(time_dict)
         phase = 0
         beat = 0
-        for point in self.points:
+        for point in sorted(self.points, key = lambda point: point.t):
             while point.t > time_dict[phase][beat]:
                 if phase == n_phase - 1:
                     phase = 0
                     beat += 1
                 else:
                     phase += 1
+            if temporal_resolution and ((point.t - time_dict[phase][beat]) > temporal_resolution):
+                setattr(point, '{}_phase'.format(cycle_name), None if not phases_names else phases_names[None])
             setattr(point, '{}_phase'.format(cycle_name), phase if not phases_names else phases_names[phase])
 
-
-    def draw(self, title = None, filter_func=None, colour = 'first_interleave', marker_size=0.1,alpha=0.6):
+    def draw(self, title = None, filter_func=None, colour = 'first_interleave', marker_size=0.1,alpha=0.6, display=False, save=None):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         if colour:
@@ -67,7 +64,10 @@ class Pattern:
         ax.scatter(point_dict['xs'],point_dict['ys'],point_dict['zs'], s=s,c=colour,marker='.',alpha=alpha)
         if title:
             plt.title(title)
-        plt.show()
+        if display:
+            plt.show()
+        if save:
+            plt.savefig(save)
 
 class CustomPattern(Pattern):
     """Pattern with user-defined points."""
@@ -79,17 +79,25 @@ class FunctionalPattern(Pattern):
     def __init__(self, point_function, n_points, time_per_acquisition=None):
         self.n_points = n_points
         self.point_function = point_function
-        super().__init__(time_per_acquisition=time_per_acquisition)
+        super().__init__()
         self.update_points()
+        self.time_per_acquisition = time_per_acquisition
+        if self.time_per_acquisition:
+            self.total_time = 0
+            self.time_points()
 
     def update_points(self):
         self.points = []
         for n in range(self.point_function):
             point = self.point_function(n)
-            if hasattr(self, 'time_per_acquisition'):
-                point.t = self.total_time
-                self.total_time += self.time_per_acquisition
             self.points.append(point)
+
+    def time_points(self):
+        for i, interleaf in self.interleaves.items():
+            for k in range(len(interleaf)):
+                interleaf[k].t = self.total_time
+                if (not hasattr(self, 'add_readout_ends')) or (not self.add_readout_ends) or (self.add_readout_ends and k % 2 == 1):
+                    self.total_time += self.time_per_acquisition
 
 class SphericalCentralPattern(FunctionalPattern):
     """Class to make and hold spherical patterns."""
@@ -104,13 +112,9 @@ class SphericalCentralPattern(FunctionalPattern):
             point = self.point_function(n)
             if self.add_readout_ends:
                 inverted_point = point.inverted_point()
-            if hasattr(self, 'time_per_acquisition'):
-                point.t = self.total_time
-                if self.add_readout_ends:
-                    inverted_point.t = self.total_time
-                    if hasattr(point,'interleaf'):
-                        inverted_point.interleaf = point.interleaf
-                self.total_time += self.time_per_acquisition
+                if hasattr(point,'interleaf'):
+                    inverted_point.interleaf = point.interleaf
+                    self.interleaves[point.interleaf].insert(self.interleaves[point.interleaf].index(point)+1,inverted_point)
             self.points.append(point)
             if self.add_readout_ends:
                 self.points.append(inverted_point)
@@ -120,17 +124,22 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     def __init__(self, n_points, n_interleaf, time_per_acquisition=None, add_readout_ends=False, alternated_points=True, rmax = 1.):
         self.n_interleaf = n_interleaf
         self.interleaves = {}
+        self.alternated_points = alternated_points
         for k in range(self.n_interleaf):
             self.interleaves[k] = []
         super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
-        if alternated_points:
+        if self.alternated_points:
             self.alternate_points()
 
     def alternate_points(self):
         for i, interleaf in self.interleaves.items():
             for k in range(len(interleaf)):
-                if k % 2 == 1:
-                    interleaf[k].invert()
+                if self.add_readout_ends:
+                    if k % 4 in [2,3]: #swap readout start and readout end for every second pair
+                        interleaf[k].invert()
+                else:
+                    if k % 2 == 1:
+                        interleaf[k].invert()
 
     def point_function(self, n):
         r = self.rmax
