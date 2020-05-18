@@ -13,7 +13,9 @@ class Heart:
         self.play_your_funky_music()
 
     def beat(self):
-        beat_time = 1.
+        beat_time = random.gauss(self.average_bps,self.bps_rms)
+        while beat_time < self.bps_lower_limit or beat_time > self.bps_higher_limit:
+            beat_time = random.gauss(self.average_bps,self.bps_rms)
         return beat_time
 
     def play_your_funky_music(self):
