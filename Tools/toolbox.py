@@ -2,6 +2,8 @@ import math
 
 golden_angle = math.pi * (3 - (5**0.5))
 
+# TODO: separate in several modules
+
 ### Coordinates
 
 def spherical_to_cartesian(r,phi,theta):
@@ -56,7 +58,7 @@ def find_best_number_of_points(Ntarget, fibo):
     else:
         return i
 
-def find_best_fibo(Ntarget, n_readouts_per_interleaf):
+def find_best_fibo(Ntarget, n_readouts_per_interleaf, fibonacci):
     previous_number = 0
     new_number = 0
     for i in range(len(fibonacci)):
