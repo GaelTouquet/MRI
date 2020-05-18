@@ -68,6 +68,7 @@ class Pattern:
             plt.show()
         if save:
             plt.savefig(save)
+        plt.close('all')
 
 class CustomPattern(Pattern):
     """Pattern with user-defined points."""
