@@ -38,18 +38,15 @@ class Pattern:
         return points
 
     def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None, temporal_resolution=None):
-        n_phase = len(time_dict)
         phase = 0
         beat = 0
         for point in sorted(self.points, key = lambda point: point.t):
-            while point.t > time_dict[phase][beat]:
-                if phase == n_phase - 1:
+            while point.t > time_dict[beat][phase]:
+                if phase == len(time_dict[beat])-1:
                     phase = 0
                     beat += 1
                 else:
                     phase += 1
-            if temporal_resolution and ((point.t - time_dict[phase][beat]) > temporal_resolution):
-                setattr(point, '{}_phase'.format(cycle_name), None if not phases_names else phases_names[None])
             setattr(point, '{}_phase'.format(cycle_name), phase if not phases_names else phases_names[phase])
 
     def draw(self, title = None, filter_func=None, colour = 'first_interleave', marker_size=0.1,alpha=0.6, display=False, save=None):
@@ -62,6 +59,7 @@ class Pattern:
             point_dict = self.get_points(filter_func=filter_func)
         s = [marker_size for x in point_dict['xs']]
         ax.scatter(point_dict['xs'],point_dict['ys'],point_dict['zs'], s=s,c=colour,marker='.',alpha=alpha)
+        print('selected {} points of {} '.format(len(point_dict['xs']),len(self.points)))
         if title:
             plt.title(title)
         if display:
