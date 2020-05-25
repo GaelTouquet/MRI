@@ -1,8 +1,8 @@
 import math
 import copy
 import matplotlib.pyplot as plt
-from Objects.Point import Point, distance
-from Tools.toolbox import golden_angle
+from Objects.Point import Point, distance, distance
+from Tools.coordinates import golden_angle
 
 class Pattern:
     """Base class for all patterns."""
@@ -67,6 +67,29 @@ class Pattern:
         if save:
             plt.savefig(save)
         plt.close('all')
+        
+    def compute_rsd(self):
+        for point in self.points:
+            distances = []
+            for other_point in self.points:
+                if other_point == point:
+                    continue
+                distances.append(distance(point,other_point))
+            point.closest_points_distances = sorted(distances)[:4]
+        mu_d = 0
+        for point in self.points:
+            for dist in point.closest_points_distances:
+                mu_d += dist
+        mu_d = (1/(4*self.n_points)) * mu_d
+        rsd = 0
+        for point in self.points:
+            for dist in point.closest_points_distances:
+                rsd += ((dist - mu_d) * (dist - mu_d))
+        rsd = (1/(4*self.n_points)) * rsd
+        rsd = math.sqrt(rsd)
+        rsd = (100/mu_d) * rsd
+        self.rsd = rsd
+        return rsd
 
 class CustomPattern(Pattern):
     """Pattern with user-defined points."""
@@ -149,3 +172,25 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         self.interleaves[k].append(new_point)
         new_point.interleaf = k
         return new_point
+
+    def compute_average_distance_between_readouts(self):
+        interleaf = self.interleaves[0]
+        average = 0
+        for i in range(len(interleaf)-1):
+            average += distance(interleaf[i],interleaf[i+1])
+        average = average / (len(interleaf)-1)
+        self.average_distance_between_readouts = average
+        return average
+
+class Golden3DRadialPatern(SphericalCentralPattern):
+    def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, rmax=1.0, golden_1=0.4656, golden_2=0.6823):
+        self.golden_1 = golden_1
+        self.golden_2 = golden_2
+        super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
+
+    def point_function(self, n):
+        r = self.rmax
+        phi = n * self.golden_1
+        z = ( (n * self.golden_2) % 1 ) * self.rmax
+        r_cyl = r * math.sin()
+        new_point = Point()

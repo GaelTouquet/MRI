@@ -2,7 +2,7 @@ N_target = 30000
 time_per_acquisition = 0.006
 fibonacci = [1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,2584,4181,6765,10946,17711]
 from Objects.Patterns import SpiralPhyllotaxisPattern
-from Tools.toolbox import find_best_number_of_points
+from Tools.fibonacci import find_best_number_of_points
 
 #cardiac phases
 from Tools.Heart import Heart
