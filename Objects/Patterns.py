@@ -71,6 +71,8 @@ class Pattern:
     def compute_rsd(self):
         for point in self.points:
             distances = []
+            # point.closest_neighbours = [p for p in points if p!=point]
+            # point.closest_neighbours = sorted(point.closest_neighbours,key = lambda p: abs(p.t - point.t))
             for other_point in self.points:
                 if other_point == point:
                     continue
@@ -174,11 +176,11 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         return new_point
 
     def compute_average_distance_between_readouts(self):
-        interleaf = self.interleaves[0]
+        points_in_first_interleaf = self.interleaves[0]
         average = 0
-        for i in range(len(interleaf)-1):
-            average += distance(interleaf[i],interleaf[i+1])
-        average = average / (len(interleaf)-1)
+        for i in range(len(points_in_first_interleaf)-1):
+            average += distance(points_in_first_interleaf[i],points_in_first_interleaf[i+1])
+        average = average / (len(points_in_first_interleaf)-1)
         self.average_distance_between_readouts = average
         return average
 
