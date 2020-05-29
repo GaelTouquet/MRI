@@ -1,5 +1,5 @@
 import math
-from Tools.toolbox import cartesian_to_spherical, cartesian_to_cylindrical, spherical_to_cartesian, cylindrical_to_cartesian
+from Tools.coordinates import cartesian_to_spherical, cartesian_to_cylindrical, spherical_to_cartesian, cylindrical_to_cartesian
 
 class Point:
     def __init__(self, **kwargs):

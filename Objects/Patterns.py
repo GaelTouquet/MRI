@@ -71,8 +71,6 @@ class Pattern:
     def compute_rsd(self):
         for point in self.points:
             distances = []
-            # point.closest_neighbours = [p for p in points if p!=point]
-            # point.closest_neighbours = sorted(point.closest_neighbours,key = lambda p: abs(p.t - point.t))
             for other_point in self.points:
                 if other_point == point:
                     continue
