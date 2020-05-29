@@ -1,21 +1,22 @@
 import math
 import copy
 import matplotlib.pyplot as plt
+import numpy as np
 from Objects.Point import Point, distance, distance
 from Tools.coordinates import golden_angle
 
 class Pattern:
     """Base class for all patterns."""
     def __init__(self):
-        self.points = []
+        self.points = np.array([],dtype=Point)
 
     def clone(self, filter_func):
         """Create a new pattern which is copied from the pattern but all points pass the given filter function."""
         new_pattern = copy.deepcopy(self)
-        new_pattern.points = []
+        new_pattern.points = np.array([],dtype=Point)
         for point in self.points:
             if filter_func(point):
-                new_pattern.points.append(point)
+                new_pattern.points = np.append(new_pattern.points,point)
 
     def get_points(self, filter_func = None, extra_vars = []):
         """Get list of matplotlib-usable points that pass the filter function."""
@@ -109,10 +110,10 @@ class FunctionalPattern(Pattern):
             self.time_points()
 
     def update_points(self):
-        self.points = []
+        self.points = np.array([],dtype=Point)
         for n in range(self.point_function):
             point = self.point_function(n)
-            self.points.append(point)
+            self.points = np.append(self.points,point)
 
     def time_points(self):
         for i, interleaf in self.interleaves.items():
@@ -129,7 +130,7 @@ class SphericalCentralPattern(FunctionalPattern):
         super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition)
 
     def update_points(self):
-        self.points = []
+        self.points = np.array([],dtype=Point)
         for n in range(self.n_points):
             point = self.point_function(n)
             if self.add_readout_ends:
@@ -137,9 +138,9 @@ class SphericalCentralPattern(FunctionalPattern):
                 if hasattr(point,'interleaf'):
                     inverted_point.interleaf = point.interleaf
                     self.interleaves[point.interleaf].insert(self.interleaves[point.interleaf].index(point)+1,inverted_point)
-            self.points.append(point)
+            self.points = np.append(self.points,point)
             if self.add_readout_ends:
-                self.points.append(inverted_point)
+                self.points = np.append(self.points,inverted_point)
 
 class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/10.1002/mrm.22898"""
