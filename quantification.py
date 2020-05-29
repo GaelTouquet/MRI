@@ -2,7 +2,7 @@ from Objects.Patterns import SpiralPhyllotaxisPattern
 from Tools.fibonacci import make_fibonacci
 import matplotlib.pyplot as plt
 
-fibonacci = make_fibonacci(3)
+fibonacci = make_fibonacci(8)
 
 averages = []
 rsds = []
@@ -26,3 +26,9 @@ plt.xlabel('number of interleaves')
 plt.ylabel('RSD (%)')
 plt.savefig('19_09_2020/rsds.png')
 plt.show()
+
+for phyllo in phyllos:
+    phyllo.distances_distribution = []
+    for point in phyllo.points:
+        for distance in point.closest_points_distances:
+            phyllo.distances_distribution.append(distance)
