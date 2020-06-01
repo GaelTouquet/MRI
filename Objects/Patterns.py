@@ -72,7 +72,7 @@ class Pattern:
     def compute_rsd(self):
         for point in self.points:
             distances = []
-            for other_point in self.points:
+            for other_point in self.points: #TODO use np.vectorize(distance) as the function to use here? test if gain in time?
                 if other_point == point:
                     continue
                 distances.append(distance(point,other_point))
