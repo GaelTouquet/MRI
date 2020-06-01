@@ -2,6 +2,7 @@ import math
 import copy
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.io import loadmat, savemat
 from Objects.Point import Point, distance, distance
 from Tools.coordinates import golden_angle
 
@@ -50,14 +51,17 @@ class Pattern:
                     phase += 1
             setattr(point, '{}_phase'.format(cycle_name), phase if not phases_names else phases_names[phase])
 
-    def draw(self, title = None, filter_func=None, colour = 'first_interleave', marker_size=0.1,alpha=0.6, display=False, save=None):
+    def draw(self, title = None, filter_func=None, colour = None, marker_size=0.1,alpha=0.6, display=False, save=None):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         if colour:
             point_dict = self.get_points(extra_vars=[colour], filter_func=filter_func)
             colour = point_dict[colour]
         else:
-            point_dict = self.get_points(filter_func=filter_func)
+            if hasattr(self.points[0], 'interleaf'):
+                self.get_points(filter_func=filter_func, extra_vars=['first_interleaf'])
+            else:
+                point_dict = self.get_points(filter_func=filter_func)
         s = [marker_size for x in point_dict['xs']]
         ax.scatter(point_dict['xs'],point_dict['ys'],point_dict['zs'], s=s,c=colour,marker='.',alpha=alpha)
         print('selected {} points of {} '.format(len(point_dict['xs']),len(self.points)))
@@ -183,15 +187,34 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         self.average_distance_between_readouts = average
         return average
 
-class Golden3DRadialPatern(SphericalCentralPattern):
-    def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, rmax=1.0, golden_1=0.4656, golden_2=0.6823):
-        self.golden_1 = golden_1
-        self.golden_2 = golden_2
-        super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
+# class Golden3DRadialPatern(SphericalCentralPattern):
+#     def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, rmax=1.0, golden_1=0.4656, golden_2=0.6823):
+#         self.golden_1 = golden_1
+#         self.golden_2 = golden_2
+#         super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
 
-    def point_function(self, n):
-        r = self.rmax
-        phi = n * self.golden_1
-        z = ( (n * self.golden_2) % 1 ) * self.rmax
-        r_cyl = r * math.sin()
-        new_point = Point()
+#     def point_function(self, n):
+#         r = self.rmax
+#         phi = n * self.golden_1
+#         z = ( (n * self.golden_2) % 1 ) * self.rmax
+#         r_cyl = r * math.sin()
+#         new_point = Point()
+
+class MatLabPattern(Pattern):
+    """Class to load a pattern from a saved MatLab file."""
+    def __init__(self, path, collection_name):
+        super().__init__()
+        self.load_from_matlab(path, collection_name)
+
+    def load_from_matlab(self, path, collection_name):
+        matlab_contents = loadmat(path)
+        matlab_pattern = matlab_contents[collection_name]
+        del(matlab_contents)
+        self.points = []
+        shape = matlab_pattern.shape
+        for i_readout in range(shape[0]):
+            for i_spoke in range(shape[1]):
+                for i_interleaf in range(shape[2]):
+                    point_coordinates = matlab_pattern[i_readout][i_spoke][i_interleaf]
+                    self.points.append(Point(x=point_coordinates[0],y=point_coordinates[1],z=point_coordinates[2]))
+        del(matlab_pattern)
