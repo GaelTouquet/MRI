@@ -33,7 +33,7 @@ class Pattern:
                 points['ys'].append(point.y)
                 points['zs'].append(point.z)
                 for var in extra_vars:
-                    if var == 'first_interleave':
+                    if var == 'first_interleaf':
                         points[var].append('r' if point.interleaf == 0 else 'b')
                     else:
                         points[var].append(getattr(point,var))
@@ -59,7 +59,7 @@ class Pattern:
             colour = point_dict[colour]
         else:
             if hasattr(self.points[0], 'interleaf'):
-                self.get_points(filter_func=filter_func, extra_vars=['first_interleaf'])
+                point_dict = self.get_points(filter_func=filter_func, extra_vars=['first_interleaf'])
             else:
                 point_dict = self.get_points(filter_func=filter_func)
         s = [marker_size for x in point_dict['xs']]
@@ -124,17 +124,11 @@ class FunctionalPattern(Pattern):
             point = self.point_function(n)
             self.points = np.append(self.points,point)
 
-    def time_points(self):
-        for i, interleaf in self.interleaves.items():
-            for k in range(len(interleaf)):
-                interleaf[k].t = self.total_time
-                if (not hasattr(self, 'add_readout_ends')) or (not self.add_readout_ends) or (self.add_readout_ends and k % 2 == 1):
-                    self.total_time += self.time_per_acquisition
 
 class SphericalCentralPattern(FunctionalPattern):
     """Class to make and hold spherical patterns."""
-    def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, rmax = 1.):
-        self.add_readout_ends = add_readout_ends
+    def __init__(self, point_function, n_points, time_per_acquisition=None, n_readouts=0, rmax = 1.):
+        self.n_readouts = n_readouts
         self.rmax = rmax
         super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition)
 
@@ -142,36 +136,32 @@ class SphericalCentralPattern(FunctionalPattern):
         self.points = np.array([],dtype=Point)
         for n in range(self.n_points):
             point = self.point_function(n)
-            if self.add_readout_ends:
-                inverted_point = point.inverted_point()
-                if hasattr(point,'interleaf'):
-                    inverted_point.interleaf = point.interleaf
-                    self.interleaves[point.interleaf].insert(self.interleaves[point.interleaf].index(point)+1,inverted_point)
             self.points = np.append(self.points,point)
-            if self.add_readout_ends:
-                self.points = np.append(self.points,inverted_point)
+            if self.n_readouts:
+                for i in range(self.n_readouts-1):
+                    new_point = Point(r=point.r*(1.-2*((i+1)/(self.n_readouts-1))),phi=point.phi,theta=point.theta)
+                    self.points = np.append(self.points, new_point)
+                    if hasattr(self,'interleaves'):
+                        new_point.interleaf = point.interleaf
+                        self.interleaves[point.interleaf][-1].append(new_point)
 
 class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/10.1002/mrm.22898"""
-    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, add_readout_ends=False, alternated_points=True, rmax = 1.):
+    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, n_readouts=0, alternated_points=True, rmax = 1.):
         self.n_interleaf = n_interleaf
         self.interleaves = {}
         self.alternated_points = alternated_points
         for k in range(self.n_interleaf):
             self.interleaves[k] = []
-        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
+        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
         if self.alternated_points:
             self.alternate_points()
 
     def alternate_points(self):
         for i, interleaf in self.interleaves.items():
             for k in range(len(interleaf)):
-                if self.add_readout_ends:
-                    if k % 4 in [2,3]: #swap readout start and readout end for every second pair
-                        interleaf[k].invert()
-                else:
-                    if k % 2 == 1:
-                        interleaf[k].invert()
+                if k % 2 == 1:
+                    interleaf[k].reverse()
 
     def point_function(self, n):
         r = self.rmax
@@ -179,7 +169,7 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         phi = n * golden_angle
         new_point = Point(r=r, theta=theta, phi=phi)
         k = n % self.n_interleaf
-        self.interleaves[k].append(new_point)
+        self.interleaves[k].append([new_point])
         new_point.interleaf = k
         return new_point
 
@@ -192,18 +182,14 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         self.average_distance_between_readouts = average
         return average
 
-# class Golden3DRadialPatern(SphericalCentralPattern):
-#     def __init__(self, point_function, n_points, time_per_acquisition=None, add_readout_ends=False, rmax=1.0, golden_1=0.4656, golden_2=0.6823):
-#         self.golden_1 = golden_1
-#         self.golden_2 = golden_2
-#         super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition, add_readout_ends=add_readout_ends, rmax=rmax)
-
-#     def point_function(self, n):
-#         r = self.rmax
-#         phi = n * self.golden_1
-#         z = ( (n * self.golden_2) % 1 ) * self.rmax
-#         r_cyl = r * math.sin()
-#         new_point = Point()
+    def time_points(self):
+        for k_interleaf in self.interleaves:
+            interleaf = self.interleaves[k_interleaf]
+            for spoke in interleaf:
+                for point in spoke:
+                    point.t = self.total_time
+                    self.total_time += self.time_per_acquisition
+                
 
 class MatLabPattern(Pattern):
     """Class to load a pattern from a saved MatLab file."""

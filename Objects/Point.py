@@ -15,7 +15,7 @@ class Point:
             self.r, self.phi, self.theta = cartesian_to_spherical(self.x, self.y, self.z)
         else:
             print(kwargs)
-            raise AttributeError('Not enough coodrinates to make a point!')
+            raise AttributeError('Not enough coordinates to make a point!')
 
     def inverted_point(self):
         x = -1. * self.x
