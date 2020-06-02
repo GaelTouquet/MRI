@@ -96,6 +96,11 @@ class Pattern:
         self.rsd = rsd
         return rsd
 
+    def write_to_matlab(self,path,name):
+        savearray = np.array([[point.x,point.y,point.z] for point in self.points])
+        savedict = {name:savearray}
+        savemat(path,savedict)
+
 class CustomPattern(Pattern):
     """Pattern with user-defined points."""
     def __init__(self, points):
