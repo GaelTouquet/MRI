@@ -15,6 +15,6 @@ def only_first_cardiac_phase(point):
 for fibo in fibonacci:
     for add_readout_ends in [True, False]:
         N = find_best_number_of_points(N_target, fibo)
-        test = SpiralPhyllotaxisPattern(N*fibo,fibo,time_per_acquisition=time_per_acquisition,alternated_points=True, add_readout_ends=add_readout_ends)
+        test = SpiralPhyllotaxisPattern(N*fibo,fibo,time_per_acquisition=time_per_acquisition,alternated_points=True)
         test.separate_in_time_phases(heart.beats)
         test.draw(title='N_total = {} , {} interleaf'.format(N*fibo,fibo), alpha=0.3, marker_size=1, colour='cardiac_phase', filter_func=only_first_cardiac_phase, display=True)

@@ -23,7 +23,7 @@ for heart in hearts:
     for number_of_projections_per_interleaf in numbers_of_projections_per_interleaf:
         print('tres {}; heartbeat {}; n proj {}'.format(heart.temporal_phase_resolution,heart.average_bps,number_of_projections_per_interleaf))
         n_interleaf = find_best_fibo(N_readouts_target,number_of_projections_per_interleaf,fibonacci)
-        phyllo = SpiralPhyllotaxisPattern(n_interleaf*number_of_projections_per_interleaf,n_interleaf,time_per_acquisition=time_per_readout,add_readout_ends=True,alternated_points=True)
+        phyllo = SpiralPhyllotaxisPattern(n_interleaf*number_of_projections_per_interleaf,n_interleaf,time_per_acquisition=time_per_readout,alternated_points=True)
         phyllo.separate_in_time_phases(heart.beats)
         phyllo.draw(title='N interleaves = {} ; {} readouts per interleaf ; Ntot = {}'.format(phyllo.n_interleaf,phyllo.n_points/phyllo.n_interleaf, phyllo.n_points),alpha=0.3, marker_size=1, colour='cardiac_phase', filter_func=only_first_cardiac_phase, display=True)#save='pres_18_05_2020/tres{}_beat{}_proj{}.png'.format(heart.temporal_phase_resolution,heart.average_bps,number_of_projections_per_interleaf)
 
