@@ -11,11 +11,19 @@ Python 3 is required
 Install dependencies
 
 ```
-Make init
+Make install
 ```
 
 ## Running
 
 ```
 Make example
+```
+
+### Code formatting
+
+We are following the autopep8.
+
+```
+Make format
 ```
