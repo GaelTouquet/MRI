@@ -3,7 +3,7 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat, savemat
-from Objects.Point import Point, distance, distance
+from Objects.Point import Point, distance
 from Tools.coordinates import golden_angle
 
 class Pattern:
@@ -97,7 +97,10 @@ class Pattern:
         return rsd
 
     def write_to_matlab(self,path,name):
-        savearray = np.array([[point.x,point.y,point.z] for point in self.points])
+        norm_factor = 2
+        if hasattr(self,'rmax'):
+            norm_factor = 2*self.rmax
+        savearray = np.array([[point.x/norm_factor,point.y/norm_factor,point.z/norm_factor] for point in self.points])
         savedict = {name:savearray}
         savemat(path,savedict)
 
@@ -124,30 +127,94 @@ class FunctionalPattern(Pattern):
             point = self.point_function(n)
             self.points = np.append(self.points,point)
 
+class InterleavedFunctionalPattern(FunctionalPattern):
+    """Virtual class to hold all the methods useful for the interleaved patterns."""
+    #TODO make interleav init in __init__ of this class
+    def compute_average_distance_between_spokes(self):
+        points_in_first_interleaf = self.interleaves[0]
+        average = 0
+        for i in range(len(points_in_first_interleaf)-1):
+            average += distance(points_in_first_interleaf[i][0],points_in_first_interleaf[i+1][0])
+        average = average / (len(points_in_first_interleaf)-1)
+        self.average_distance_between_readouts = average
+        return average
 
-class SphericalCentralPattern(FunctionalPattern):
+class SphericalCentralPattern(InterleavedFunctionalPattern):
     """Class to make and hold spherical patterns."""
-    def __init__(self, point_function, n_points, time_per_acquisition=None, n_readouts=0, rmax = 1.):
+    def __init__(self, point_function, n_points, time_per_acquisition=None, n_readouts=1, rmax = 1.):
         self.n_readouts = n_readouts
         self.rmax = rmax
         super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition)
 
     def update_points(self):
-        self.points = np.array([],dtype=Point)
+        self.points = np.empty((self.n_points*self.n_readouts),dtype=Point)
         for n in range(self.n_points):
             point = self.point_function(n)
-            self.points = np.append(self.points,point)
+            self.points[n*self.n_readouts] = point
             if self.n_readouts:
                 for i in range(self.n_readouts-1):
                     new_point = Point(r=point.r*(1.-2*((i+1)/(self.n_readouts-1))),phi=point.phi,theta=point.theta)
-                    self.points = np.append(self.points, new_point)
+                    self.points[(n*self.n_readouts) + (i+1)] = new_point
                     if hasattr(self,'interleaves'):
                         new_point.interleaf = point.interleaf
                         self.interleaves[point.interleaf][-1].append(new_point)
 
+class ArchimedeanSpiralUniform(SphericalCentralPattern):
+    """https://onlinelibrary.wiley.com/doi/pdf/10.1002/mrm.22898 and https://onlinelibrary.wiley.com/doi/epdf/10.1002/mrm.20128"""
+    def __init__(self, n_points, n_interleaves, time_per_acquisition=None, n_readouts=1, rmax=1.0):
+        self.n_interleaf = n_interleaves
+        self.n_points_per_interleaf = n_points // self.n_interleaf
+        self.interleaves = {}
+        for k in range(self.n_interleaf):
+            self.interleaves[k] = []
+        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
+    
+    def point_function(self,n):
+        # p = n % self.n_points_per_interleaf
+        # i = n // self.n_points_per_interleaf
+        z = self.rmax * (1 - (n/self.n_points))
+        # z = (2*p - (self.n_points_per_interleaf + 1))/self.n_points_per_interleaf
+        phi = (math.sqrt(2*self.n_points*math.pi)*math.asin(z))
+        x = math.cos(phi)*math.sqrt(1-(z*z))
+        y = math.sin(phi)*math.sqrt(1-(z*z))
+        point = Point(x=x,y=y,z=z)
+        m = n % self.n_interleaf
+        self.interleaves[m].append([point])
+        point.interleaf = m
+        return point
+
+class ArchimedeanSpiralNonUniform(SphericalCentralPattern):
+    """https://onlinelibrary.wiley.com/doi/pdf/10.1002/mrm.22898 and https://onlinelibrary.wiley.com/doi/epdf/10.1002/mrm.20128"""
+    def __init__(self, n_points, n_interleaves, time_per_acquisition=None, n_readouts=1, rmax=1.0):
+        self.n_interleaf = n_interleaves
+        self.n_points_per_interleaf = n_points // self.n_interleaf
+        self.interleaves = {}
+        for k in range(self.n_interleaf):
+            self.interleaves[k] = []
+        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
+    
+    def point_function(self,n):
+        p = n % self.n_points_per_interleaf
+        i = n // self.n_points_per_interleaf
+        if i == 0:
+            z = self.rmax * (1 - (p/self.n_points_per_interleaf))
+            # z = (p - (self.n_interleaf + 0.5))/self.n_points_per_interleaf
+            phi = (math.sqrt((2*self.n_points_per_interleaf*math.pi)/self.n_interleaf)*math.asin(z)) + ((2*i*math.pi)/self.n_interleaf)
+            x = math.cos(phi)*math.sqrt((self.rmax*self.rmax)-(z*z))
+            y = math.sin(phi)*math.sqrt((self.rmax*self.rmax)-(z*z))
+            point = Point(x=x,y=y,z=z)
+        else:
+            r = self.interleaves[0][p][0].r
+            phi = self.interleaves[0][p][0].phi + (i*2*math.pi/self.n_interleaf)
+            theta = self.interleaves[0][p][0].theta 
+            point = Point(r=r,phi=phi,theta=theta)
+        self.interleaves[i].append([point])
+        point.interleaf = i
+        return point
+
 class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/10.1002/mrm.22898"""
-    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, n_readouts=0, alternated_points=True, rmax = 1.):
+    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, n_readouts=1, alternated_points=True, rmax = 1.):
         self.n_interleaf = n_interleaf
         self.interleaves = {}
         self.alternated_points = alternated_points
@@ -172,15 +239,6 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         self.interleaves[k].append([new_point])
         new_point.interleaf = k
         return new_point
-
-    def compute_average_distance_between_readouts(self):
-        points_in_first_interleaf = self.interleaves[0]
-        average = 0
-        for i in range(len(points_in_first_interleaf)-1):
-            average += distance(points_in_first_interleaf[i],points_in_first_interleaf[i+1])
-        average = average / (len(points_in_first_interleaf)-1)
-        self.average_distance_between_readouts = average
-        return average
 
     def time_points(self):
         for k_interleaf in self.interleaves:
