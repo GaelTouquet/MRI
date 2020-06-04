@@ -14,7 +14,7 @@ def cartesian_to_spherical(x, y, z):
      return [
           math.sqrt(hxy + z**2),
           math.atan2(y,x),
-          math.atan2(z, math.sqrt(hxy**2))
+          math.atan2(math.sqrt(hxy), z)
      ]
 
 def cartesian_to_cylindrical(x, y, z):
