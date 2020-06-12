@@ -4,6 +4,7 @@ from Tools.coordinates import cartesian_to_spherical, cartesian_to_cylindrical, 
 class Point:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+        # only save x,y and z by testing the content of kwargs
         if hasattr(self, 'x') and hasattr(self, 'y') and hasattr(self, 'z'):
             self.r, self.phi, self.theta = cartesian_to_spherical(self.x, self.y, self.z)
             self.r_cyl, self.phi, self.z = cartesian_to_cylindrical(self.x,self.y,self.z)
@@ -16,6 +17,8 @@ class Point:
         else:
             print(kwargs)
             raise AttributeError('Not enough coordinates to make a point!')
+
+    #creates methods to retrieve all the different coordinates (and compute them on call if needed)
 
     def inverted_point(self):
         x = -1. * self.x

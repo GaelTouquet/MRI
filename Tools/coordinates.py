@@ -2,6 +2,8 @@ import math
 
 golden_angle = math.pi * (3 - (5**0.5))
 
+#define functions that compute each element, so that they can be called independently in point
+
 def spherical_to_cartesian(r,phi,theta):
     return [
          r * math.sin(theta) * math.cos(phi),
