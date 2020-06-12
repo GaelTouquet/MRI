@@ -29,9 +29,9 @@ class Pattern:
             points[var] = []
         for point in self.points:
             if (not filter_func) or filter_func(point):
-                points['xs'].append(point.x)
-                points['ys'].append(point.y)
-                points['zs'].append(point.z)
+                points['xs'].append(point.x())
+                points['ys'].append(point.y())
+                points['zs'].append(point.z())
                 for var in extra_vars:
                     if var == 'first_interleaf':
                         points[var].append('r' if point.interleaf == 0 else 'b')
@@ -100,7 +100,7 @@ class Pattern:
         norm_factor = 2
         if hasattr(self,'rmax'):
             norm_factor = 2*self.rmax
-        savearray = np.array([[point.x/norm_factor,point.y/norm_factor,point.z/norm_factor] for point in self.points])
+        savearray = np.array([[point.x()/norm_factor,point.y()/norm_factor,point.z()/norm_factor] for point in self.points])
         savedict = {name:savearray}
         savemat(path,savedict)
 
@@ -153,7 +153,7 @@ class SphericalCentralPattern(InterleavedFunctionalPattern):
             self.points[n*self.n_readouts] = point
             if self.n_readouts:
                 for i in range(self.n_readouts-1):
-                    new_point = Point(r=point.r*(1.-2*((i+1)/(self.n_readouts-1))),phi=point.phi,theta=point.theta)
+                    new_point = Point(r=point.r()*(1.-2*((i+1)/(self.n_readouts-1))),phi=point.phi(),theta=point.theta())
                     self.points[(n*self.n_readouts) + (i+1)] = new_point
                     if hasattr(self,'interleaves'):
                         new_point.interleaf = point.interleaf
@@ -204,9 +204,9 @@ class ArchimedeanSpiralNonUniform(SphericalCentralPattern):
             y = math.sin(phi)*math.sqrt((self.rmax*self.rmax)-(z*z))
             point = Point(x=x,y=y,z=z)
         else:
-            r = self.interleaves[0][p][0].r
-            phi = self.interleaves[0][p][0].phi + (i*2*math.pi/self.n_interleaf)
-            theta = self.interleaves[0][p][0].theta 
+            r = self.interleaves[0][p][0].r()
+            phi = self.interleaves[0][p][0].phi() + (i*2*math.pi/self.n_interleaf)
+            theta = self.interleaves[0][p][0].theta ()
             point = Point(r=r,phi=phi,theta=theta)
         self.interleaves[i].append([point])
         point.interleaf = i

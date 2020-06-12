@@ -1,44 +1,62 @@
 import math
-from Tools.coordinates import cartesian_to_spherical, cartesian_to_cylindrical, spherical_to_cartesian, cylindrical_to_cartesian
-
+from Tools.coordinates import *
 class Point:
     def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
         # only save x,y and z by testing the content of kwargs
-        if hasattr(self, 'x') and hasattr(self, 'y') and hasattr(self, 'z'):
-            self.r, self.phi, self.theta = cartesian_to_spherical(self.x, self.y, self.z)
-            self.r_cyl, self.phi, self.z = cartesian_to_cylindrical(self.x,self.y,self.z)
-        elif hasattr(self, 'r') and hasattr(self, 'phi') and hasattr(self, 'theta'):
-            self.x, self.y, self.z = spherical_to_cartesian(self.r,self.phi,self.theta)
-            self.r_cyl, self.phi, self.z = cartesian_to_cylindrical(self.x,self.y,self.z)
-        elif hasattr(self, 'r_cyl') and hasattr(self, 'phi') and hasattr(self, 'z'):
-            self.x, self.y, self.z = cylindrical_to_cartesian(self.r_cyl,self.phi,self.z)
-            self.r, self.phi, self.theta = cartesian_to_spherical(self.x, self.y, self.z)
+        if ('x' in kwargs) and ('y' in kwargs) and ('z' in kwargs):
+            self._x = kwargs['x']
+            self._y = kwargs['y']
+            self._z = kwargs['z']
+        elif ('r' in kwargs) and ('phi' in kwargs) and ('theta' in kwargs):
+            self._x, self._y, self._z = spherical_to_cartesian(kwargs['r'],kwargs['phi'],kwargs['theta'])
+        elif ('r_cyl' in kwargs) and ('phi' in kwargs) and ('z' in kwargs):
+            self._x, self._y, self._z = cylindrical_to_cartesian(kwargs['r_cyl'],kwargs['phi'],kwargs['z'])
         else:
             print(kwargs)
             raise AttributeError('Not enough coordinates to make a point!')
 
     #creates methods to retrieve all the different coordinates (and compute them on call if needed)
 
+    def x(self):
+        return self._x
+
+    def y(self):
+        return self._y
+
+    def z(self):
+        return self._z
+
+    def r(self):
+        return r_from_cartesian(self._x,self._y,self._z)
+
+    def phi(self):
+        return phi_from_cartesian(self._x,self._y)
+
+    def theta(self):
+        return theta_from_cartesian(self._x,self._y,self._z)
+
+    def r_cyl(self):
+        return r_cyl_from_cartesian(self._x,self._y)
+
     def inverted_point(self):
-        x = -1. * self.x
-        y = -1. * self.y
-        z = -1. * self.z
+        x = -1. * self.x()
+        y = -1. * self.y()
+        z = -1. * self.z()
         return Point(x=x, y=y, z=z)
 
     def invert(self):
-        self.x = -1. * self.x
-        self.y = -1. * self.y
-        self.z = -1. * self.z
-        self.r, self.phi, self.theta = cartesian_to_spherical(self.x, self.y, self.z)
-        self.r_cyl, self.phi, self.z = cartesian_to_cylindrical(self.x,self.y,self.z)
+        self._x = -1. * self.x()
+        self._y = -1. * self.y()
+        self._z = -1. * self.z()
 
+
+    
 
     def __str__(self):
-        return 'x:{},y:{},z:{}'.format(self.x,self.y,self.z)
+        return 'x:{},y:{},z:{}'.format(self._x,self._y,self._z)
 
 def distance(point_a,point_b):
-    x = point_a.x - point_b.x
-    y = point_a.y - point_b.y
-    z = point_a.z - point_b.z
+    x = point_a.x() - point_b.x()
+    y = point_a.y() - point_b.y()
+    z = point_a.z() - point_b.z()
     return math.sqrt(x**2 + y**2 + z**2)
