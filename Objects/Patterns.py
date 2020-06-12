@@ -96,11 +96,11 @@ class Pattern:
         self.rsd = rsd
         return rsd
 
-    def write_to_matlab(self,path,name):
+    def write_to_matlab(self,path,name,dtype=np.float64):
         norm_factor = 2
         if hasattr(self,'rmax'):
             norm_factor = 2*self.rmax
-        savearray = np.array([[point.x()/norm_factor,point.y()/norm_factor,point.z()/norm_factor] for point in self.points])
+        savearray = np.array([[point.x()/norm_factor,point.y()/norm_factor,point.z()/norm_factor] for point in self.points],dtype=dtype)
         savedict = {name:savearray}
         savemat(path,savedict)
 

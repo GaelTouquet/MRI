@@ -2,7 +2,6 @@ import math
 from Tools.coordinates import *
 class Point:
     def __init__(self, **kwargs):
-        # only save x,y and z by testing the content of kwargs
         if ('x' in kwargs) and ('y' in kwargs) and ('z' in kwargs):
             self._x = kwargs['x']
             self._y = kwargs['y']
@@ -14,8 +13,6 @@ class Point:
         else:
             print(kwargs)
             raise AttributeError('Not enough coordinates to make a point!')
-
-    #creates methods to retrieve all the different coordinates (and compute them on call if needed)
 
     def x(self):
         return self._x
@@ -48,9 +45,6 @@ class Point:
         self._x = -1. * self.x()
         self._y = -1. * self.y()
         self._z = -1. * self.z()
-
-
-    
 
     def __str__(self):
         return 'x:{},y:{},z:{}'.format(self._x,self._y,self._z)
