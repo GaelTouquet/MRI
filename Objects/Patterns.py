@@ -122,10 +122,9 @@ class FunctionalPattern(Pattern):
             self.time_points()
 
     def update_points(self):
-        self.points = np.array([],dtype=Point)
-        for n in range(self.point_function):
-            point = self.point_function(n)
-            self.points = np.append(self.points,point)
+        self.points = np.zeros(self.n_points,dtype=Point)
+        for n in range(self.n_points):
+            self.points[n] = self.point_function(n)
 
 class InterleavedFunctionalPattern(FunctionalPattern):
     """Virtual class to hold all the methods useful for the interleaved patterns."""
