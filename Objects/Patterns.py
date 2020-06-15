@@ -214,12 +214,13 @@ class ArchimedeanSpiralNonUniform(SphericalCentralPattern):
 
 class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/10.1002/mrm.22898"""
-    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, n_readouts=1, alternated_points=True, rmax = 1.):
+    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, n_readouts=1, alternated_points=True, rmax = 1., interleaves=True):
         self.n_interleaf = n_interleaf
-        self.interleaves = {}
+        if interleaves:
+            self.interleaves = {}
+            for k in range(self.n_interleaf):
+                self.interleaves[k] = []
         self.alternated_points = alternated_points
-        for k in range(self.n_interleaf):
-            self.interleaves[k] = []
         super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
         if self.alternated_points:
             self.alternate_points()
@@ -235,9 +236,10 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         theta = (math.pi/2) * math.sqrt(n/self.n_points)
         phi = n * golden_angle
         new_point = Point(r=r, theta=theta, phi=phi)
-        k = n % self.n_interleaf
-        self.interleaves[k].append([new_point])
-        new_point.interleaf = k
+        if hasattr(self, 'interleaves'):
+            k = n % self.n_interleaf
+            self.interleaves[k].append([new_point])
+            new_point.interleaf = k
         return new_point
 
     def time_points(self):
