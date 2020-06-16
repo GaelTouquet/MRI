@@ -14,10 +14,7 @@ class Pattern:
     def clone(self, filter_func):
         """Create a new pattern which is copied from the pattern but all points pass the given filter function."""
         new_pattern = copy.deepcopy(self)
-        new_pattern.points = np.array([],dtype=Point)
-        for point in self.points:
-            if filter_func(point):
-                new_pattern.points = np.append(new_pattern.points,point)
+        new_pattern.points = copy.deepcopy(self.points)
 
     def get_points(self, filter_func = None, extra_vars = []):
         """Get list of matplotlib-usable points that pass the filter function."""
@@ -27,22 +24,24 @@ class Pattern:
         points['zs'] = []
         for var in extra_vars:
             points[var] = []
-        for point in self.points:
-            if (not filter_func) or filter_func(point):
-                points['xs'].append(point.x())
-                points['ys'].append(point.y())
-                points['zs'].append(point.z())
+        for i in np.ndindex(self.points.shape):
+            if (not filter_func) or filter_func(self.points[i]):
+                points['xs'].append(self.points[i].x())
+                points['ys'].append(self.points[i].y())
+                points['zs'].append(self.points[i].z())
                 for var in extra_vars:
                     if var == 'first_interleaf':
-                        points[var].append('r' if point.interleaf == 0 else 'b')
+                        points[var].append('r' if (i[2] == 0) else 'b')
                     else:
-                        points[var].append(getattr(point,var))
+                        points[var].append(getattr(self.points[i],var))
         return points
 
     def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None, temporal_resolution=None):
-        phase = 0
-        beat = 0
-        for point in sorted(self.points, key = lambda point: point.t):
+        #TODO check that this works correctly
+        for i in np.ndindex(self.points.shape):
+            point = self.points[i]
+            phase = 0
+            beat = 0
             while point.t > time_dict[beat][phase]:
                 if phase == len(time_dict[beat])-1:
                     phase = 0
@@ -64,7 +63,7 @@ class Pattern:
                 point_dict = self.get_points(filter_func=filter_func)
         s = [marker_size for x in point_dict['xs']]
         ax.scatter(point_dict['xs'],point_dict['ys'],point_dict['zs'], s=s,c=colour,marker='.',alpha=alpha)
-        print('selected {} points of {} '.format(len(point_dict['xs']),len(self.points)))
+        print('selected {} points of {} '.format(len(point_dict['xs']),self.points.size))
         if title:
             plt.title(title)
         if display:
@@ -74,21 +73,23 @@ class Pattern:
         plt.close('all')
         
     def compute_rsd(self):
-        for point in self.points:
+        for i in np.ndindex(self.points.shape):
+            point = self.points[i]
             distances = []
-            for other_point in self.points: #TODO use np.vectorize(distance) as the function to use here? test if gain in time?
+            for j in np.ndindex(self.points.shape):
+                other_point = self.points[j]
                 if other_point == point:
                     continue
                 distances.append(distance(point,other_point))
             point.closest_points_distances = sorted(distances)[:4]
         mu_d = 0
-        for point in self.points:
-            for dist in point.closest_points_distances:
+        for i in np.ndindex(self.points.shape):
+            for dist in self.points[i].closest_points_distances:
                 mu_d += dist
         mu_d = (1/(4*self.n_points)) * mu_d
         rsd = 0
-        for point in self.points:
-            for dist in point.closest_points_distances:
+        for i in np.ndindex(self.points.shape):
+            for dist in self.points[i].closest_points_distances:
                 rsd += ((dist - mu_d) * (dist - mu_d))
         rsd = (1/(4*self.n_points)) * rsd
         rsd = math.sqrt(rsd)
@@ -110,143 +111,130 @@ class CustomPattern(Pattern):
         self.points = points
 
 class FunctionalPattern(Pattern):
-    """Base class for pattern that use a function to derive the position of its points. self.point_function should return a point for each iteration value over n_points."""
+    """Class for pattern that use a function to derive the position of its points. self.point_function should return a point for each iteration value over n_points."""
     def __init__(self, point_function, n_points, time_per_acquisition=None):
         self.n_points = n_points
         self.point_function = point_function
-        super().__init__()
-        self.update_points()
         self.time_per_acquisition = time_per_acquisition
         if self.time_per_acquisition:
-            self.total_time = 0
-            self.time_points()
+            self.total_time = 0.
+        self.update_points()
 
     def update_points(self):
         self.points = np.zeros(self.n_points,dtype=Point)
         for n in range(self.n_points):
             self.points[n] = self.point_function(n)
+            if self.time_per_acquisition:
+                self.points[n].t = self.total_time
+                self.total_time += self.time_per_acquisition
 
-class InterleavedFunctionalPattern(FunctionalPattern):
+class InterleavedPattern(Pattern):
     """Virtual class to hold all the methods useful for the interleaved patterns."""
-    #TODO make interleav init in __init__ of this class
+    def __init__(self, interleaf_function, spoke_function, readout_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=True):
+        self.interleaf_function = interleaf_function
+        self.spoke_function = spoke_function
+        self.readout_function = readout_function
+        self.n_readouts_per_spoke = n_readouts_per_spoke
+        self.n_spokes_per_interleaf = n_spokes_per_interleaf
+        self.n_interleaves = n_interleaves
+        self.n_points = self.n_readouts_per_spoke * self.n_spokes_per_interleaf * self.n_interleaves
+        self.time_per_acquisition = time_per_acquisition
+        self.alternated_spokes = alternated_spokes
+        self.update_points()
+
+    def update_points(self):
+        self.points = np.zeros((self.n_readouts_per_spoke,self.n_spokes_per_interleaf,self.n_interleaves), dtype=Point)
+        if self.time_per_acquisition:
+            self.total_time = 0.
+        for i_interleaf in range(self.n_interleaves):
+            first_spoke = self.interleaf_function(i_interleaf)
+            for i_spoke in range(self.n_spokes_per_interleaf):
+                first_readout = self.spoke_function(i_interleaf,first_spoke,i_spoke)
+                for i_readout in range(self.n_readouts_per_spoke):
+                    if self.alternated_spokes and (i_spoke % 2 == 1):
+                        k_readout = (self.n_readouts_per_spoke-1) - i_readout
+                    else:
+                        k_readout = i_readout
+                    self.points[i_readout,i_spoke,i_interleaf] = self.readout_function(i_interleaf,first_spoke,i_spoke,first_readout,k_readout)
+                    if self.time_per_acquisition:
+                        self.points[i_readout,i_spoke,i_interleaf].t = self.total_time
+                        self.total_time += self.time_per_acquisition
+
     def compute_average_distance_between_spokes(self):
-        points_in_first_interleaf = self.interleaves[0]
+        points_in_first_interleaf = self.points[0,:,0]
         average = 0
         for i in range(len(points_in_first_interleaf)-1):
-            average += distance(points_in_first_interleaf[i][0],points_in_first_interleaf[i+1][0])
+            average += distance(points_in_first_interleaf[i],points_in_first_interleaf[i+1])
         average = average / (len(points_in_first_interleaf)-1)
         self.average_distance_between_readouts = average
         return average
 
-class SphericalCentralPattern(InterleavedFunctionalPattern):
+class SphericalCentralPattern(InterleavedPattern):
     """Class to make and hold spherical patterns."""
-    def __init__(self, point_function, n_points, time_per_acquisition=None, n_readouts=1, rmax = 1.):
-        self.n_readouts = n_readouts
+    def __init__(self, interleaf_function, spoke_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=False, rmax = 1.):
         self.rmax = rmax
-        super().__init__(point_function, n_points, time_per_acquisition=time_per_acquisition)
-
-    def update_points(self):
-        self.points = np.empty((self.n_points*self.n_readouts),dtype=Point)
-        for n in range(self.n_points):
-            point = self.point_function(n)
-            self.points[n*self.n_readouts] = point
-            if self.n_readouts:
-                for i in range(self.n_readouts-1):
-                    new_point = Point(r=point.r()*(1.-2*((i+1)/(self.n_readouts-1))),phi=point.phi(),theta=point.theta())
-                    self.points[(n*self.n_readouts) + (i+1)] = new_point
-                    if hasattr(self,'interleaves'):
-                        new_point.interleaf = point.interleaf
-                        self.interleaves[point.interleaf][-1].append(new_point)
+        super().__init__(interleaf_function=interleaf_function, spoke_function=spoke_function, readout_function=self.readout_function, n_readouts_per_spoke=n_readouts_per_spoke, n_spokes_per_interleaf=n_spokes_per_interleaf, n_interleaves=n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes)
+    
+    def readout_function(self,i_interleaf,first_spoke,i_spoke,first_readout,k_readout):
+        if k_readout == 0:
+            return first_readout
+        else:
+            r = first_readout.r()*(1.-2*((k_readout+1)/(self.n_readouts_per_spoke-1)))
+            phi = first_readout.phi()
+            theta = first_readout.theta()
+            return Point(r=r,phi=phi,theta=theta)
 
 class ArchimedeanSpiralUniform(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/pdf/10.1002/mrm.22898 and https://onlinelibrary.wiley.com/doi/epdf/10.1002/mrm.20128"""
-    def __init__(self, n_points, n_interleaves, time_per_acquisition=None, n_readouts=1, rmax=1.0):
-        self.n_interleaf = n_interleaves
-        self.n_points_per_interleaf = n_points // self.n_interleaf
-        self.interleaves = {}
-        for k in range(self.n_interleaf):
-            self.interleaves[k] = []
-        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
+    def __init__(self, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=False, rmax = 1.):
+        super().__init__(interleaf_function=self.interleaf_function, spoke_function=self.spoke_function, n_readouts_per_spoke=n_readouts_per_spoke, n_spokes_per_interleaf=n_spokes_per_interleaf, n_interleaves=n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes, rmax = rmax)
     
-    def point_function(self,n):
-        # p = n % self.n_points_per_interleaf
-        # i = n // self.n_points_per_interleaf
-        z = self.rmax * (1 - (n/self.n_points))
-        # z = (2*p - (self.n_points_per_interleaf + 1))/self.n_points_per_interleaf
-        phi = (math.sqrt(2*self.n_points*math.pi)*math.asin(z))
+    def spoke_function(self, i_interleaf,first_spoke,i_spoke):
+        n = i_spoke*self.n_interleaves + i_interleaf
+        z = self.rmax * (1 - (n/(self.n_interleaves*self.n_spokes_per_interleaf)))
+        phi = (math.sqrt(2*self.n_interleaves*self.n_spokes_per_interleaf*math.pi)*math.asin(z))
         x = math.cos(phi)*math.sqrt(1-(z*z))
         y = math.sin(phi)*math.sqrt(1-(z*z))
-        point = Point(x=x,y=y,z=z)
-        m = n % self.n_interleaf
-        self.interleaves[m].append([point])
-        point.interleaf = m
-        return point
+        return Point(x=x,y=y,z=z)
+
+    def interleaf_function(self, i_interleaf):
+        return None
 
 class ArchimedeanSpiralNonUniform(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/pdf/10.1002/mrm.22898 and https://onlinelibrary.wiley.com/doi/epdf/10.1002/mrm.20128"""
-    def __init__(self, n_points, n_interleaves, time_per_acquisition=None, n_readouts=1, rmax=1.0):
-        self.n_interleaf = n_interleaves
-        self.n_points_per_interleaf = n_points // self.n_interleaf
-        self.interleaves = {}
-        for k in range(self.n_interleaf):
-            self.interleaves[k] = []
-        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
+    def __init__(self, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=False, rmax = 1.):
+        super().__init__(interleaf_function=self.interleaf_function, spoke_function=self.spoke_function, n_readouts_per_spoke=n_readouts_per_spoke, n_spokes_per_interleaf=n_spokes_per_interleaf, n_interleaves=n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes, rmax = rmax)
     
-    def point_function(self,n):
-        p = n % self.n_points_per_interleaf
-        i = n // self.n_points_per_interleaf
-        if i == 0:
-            z = self.rmax * (1 - (p/self.n_points_per_interleaf))
-            # z = (p - (self.n_interleaf + 0.5))/self.n_points_per_interleaf
-            phi = (math.sqrt((2*self.n_points_per_interleaf*math.pi)/self.n_interleaf)*math.asin(z)) + ((2*i*math.pi)/self.n_interleaf)
+    def spoke_function(self, i_interleaf,first_spoke,i_spoke):
+        if i_interleaf == 0:
+            z = self.rmax * (1 - (i_spoke/self.n_spokes_per_interleaf))
+            phi = (math.sqrt((2*self.n_spokes_per_interleaf*math.pi)/self.n_interleaves)*math.asin(z)) + ((2*i_interleaf*math.pi)/self.n_interleaves)
             x = math.cos(phi)*math.sqrt((self.rmax*self.rmax)-(z*z))
             y = math.sin(phi)*math.sqrt((self.rmax*self.rmax)-(z*z))
-            point = Point(x=x,y=y,z=z)
+            return Point(x=x,y=y,z=z)
         else:
-            r = self.interleaves[0][p][0].r()
-            phi = self.interleaves[0][p][0].phi() + (i*2*math.pi/self.n_interleaf)
-            theta = self.interleaves[0][p][0].theta ()
-            point = Point(r=r,phi=phi,theta=theta)
-        self.interleaves[i].append([point])
-        point.interleaf = i
-        return point
+            r = self.points[0,i_spoke,0].r()
+            phi = self.points[0,i_spoke,0].phi() + (i_interleaf*2*math.pi/self.n_interleaves)
+            theta = self.points[0,i_spoke,0].theta()
+            return Point(r=r,phi=phi,theta=theta)
+
+    def interleaf_function(self, i_interleaf):
+        return None
 
 class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/10.1002/mrm.22898"""
-    def __init__(self, n_points, n_interleaf, time_per_acquisition=None, n_readouts=1, alternated_points=True, rmax = 1.):
-        self.n_interleaf = n_interleaf
-        self.interleaves = {}
-        self.alternated_points = alternated_points
-        for k in range(self.n_interleaf):
-            self.interleaves[k] = []
-        super().__init__(self.point_function, n_points, time_per_acquisition=time_per_acquisition, n_readouts=n_readouts, rmax=rmax)
-        if self.alternated_points:
-            self.alternate_points()
+    def __init__(self, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=True, rmax=1.0):
+        super().__init__(interleaf_function=self.interleaf_function, spoke_function=self.spoke_function, n_readouts_per_spoke=n_readouts_per_spoke, n_spokes_per_interleaf=n_spokes_per_interleaf, n_interleaves=n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes, rmax=rmax)
 
-    def alternate_points(self):
-        for i, interleaf in self.interleaves.items():
-            for k in range(len(interleaf)):
-                if k % 2 == 1:
-                    interleaf[k].reverse()
-
-    def point_function(self, n):
+    def spoke_function(self, i_interleaf,first_spoke,i_spoke):
+        n = i_spoke*self.n_interleaves + i_interleaf
         r = self.rmax
-        theta = (math.pi/2) * math.sqrt(n/self.n_points)
+        theta = (math.pi/2) * math.sqrt(n/(self.n_interleaves*self.n_spokes_per_interleaf))
         phi = n * golden_angle
-        new_point = Point(r=r, theta=theta, phi=phi)
-        k = n % self.n_interleaf
-        self.interleaves[k].append([new_point])
-        new_point.interleaf = k
-        return new_point
+        return Point(r=r, theta=theta, phi=phi)
 
-    def time_points(self):
-        for k_interleaf in self.interleaves:
-            interleaf = self.interleaves[k_interleaf]
-            for spoke in interleaf:
-                for point in spoke:
-                    point.t = self.total_time
-                    self.total_time += self.time_per_acquisition
-                
+    def interleaf_function(self, i_interleaf):
+        return None
 
 class MatLabPattern(Pattern):
     """Class to load a pattern from a saved MatLab file."""

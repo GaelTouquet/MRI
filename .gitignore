@@ -3,3 +3,4 @@
 *.pdf
 *.mat
 sandbox.*
+*.code-workspace
