@@ -1,9 +1,9 @@
-import numpy as np
-from Objects.Patterns import SpiralPhyllotaxisPattern, MatLabPattern
+from Objects.Patterns import SpiralPhyllotaxisPattern, InterleavedMatLabPattern
 
-fibo = 1
-phyllo = SpiralPhyllotaxisPattern(
-    8*2584, 2584, n_readouts=272, alternated_points=True)
+phyllo = SpiralPhyllotaxisPattern(n_readouts_per_spoke=272,n_spokes_per_interleaf=8,n_interleaves=2584,alternated_spokes=True,rmax=0.5)
+phyllo.write_to_matlab('./matlab_test.mat','myk')
 
-# phyllo.write_to_matlab('./matlab_test.mat','myk',dtype=np.float32)
-matlab = MatLabPattern('ph_11072019_2035184_5_2_wip_phyllo_classicV4_k.mat','k')
+# matlab = InterleavedMatLabPattern('ph_11072019_2035184_5_2_wip_phyllo_classicV4_k.mat','k',time_per_acquisition=0.06)
+# matlab.draw(filter_func=is_on_sphere,display=True)
+
+#differences: mainly on phi, start at different positions, rotating opposite way ; also alteranting evens for me, odds for monica

@@ -37,7 +37,6 @@ class Pattern:
         return points
 
     def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None, temporal_resolution=None):
-        #TODO check that this works correctly
         for i in np.ndindex(self.points.shape):
             point = self.points[i]
             phase = 0
@@ -101,7 +100,14 @@ class Pattern:
         norm_factor = 2
         if hasattr(self,'rmax'):
             norm_factor = 2*self.rmax
-        savearray = np.array([[point.x()/norm_factor,point.y()/norm_factor,point.z()/norm_factor] for point in self.points],dtype=dtype)
+        shape = list(self.points.shape)
+        shape.append(3)
+        savearray = np.zeros(shape,dtype=dtype)
+        for i in np.ndindex(self.points.shape):
+            x = min(self.points[i].x()/norm_factor,0.5)
+            y = min(self.points[i].y()/norm_factor,0.5)
+            z = min(self.points[i].z()/norm_factor,0.5)
+            savearray[i][:] = x, y, z
         savedict = {name:savearray}
         savemat(path,savedict)
 
@@ -236,21 +242,30 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     def interleaf_function(self, i_interleaf):
         return None
 
-class MatLabPattern(Pattern):
+class InterleavedMatLabPattern(InterleavedPattern):
     """Class to load a pattern from a saved MatLab file."""
-    def __init__(self, path, collection_name):
-        super().__init__()
-        self.load_from_matlab(path, collection_name)
-
-    def load_from_matlab(self, path, collection_name):
+    def __init__(self, path, name, time_per_acquisition=None, alternated_spokes=True):
         matlab_contents = loadmat(path)
-        matlab_pattern = matlab_contents[collection_name]
+        matlab_pattern = matlab_contents[name]
         del(matlab_contents)
-        self.points = []
         shape = matlab_pattern.shape
-        for i_readout in range(shape[0]):
-            for i_spoke in range(shape[1]):
-                for i_interleaf in range(shape[2]):
+        n_readouts_per_spoke = shape[0]
+        n_spokes_per_interleaf = shape[1]
+        n_interleaves = shape[2]
+        self.points = np.zeros((n_readouts_per_spoke,n_spokes_per_interleaf,n_interleaves),dtype=Point)
+        for i_readout in range(n_readouts_per_spoke):
+            for i_spoke in range(n_spokes_per_interleaf):
+                for i_interleaf in range(n_interleaves):
                     point_coordinates = matlab_pattern[i_readout][i_spoke][i_interleaf]
-                    self.points.append(Point(x=point_coordinates[0],y=point_coordinates[1],z=point_coordinates[2]))
+                    self.points[i_readout,i_spoke,i_interleaf] = Point(x=point_coordinates[0],y=point_coordinates[1],z=point_coordinates[2])
         del(matlab_pattern)
+        super().__init__(None, None, None, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes)
+
+    def update_points(self):
+        if self.time_per_acquisition:
+            self.total_time = 0.
+            for i_interleaf in range(self.n_interleaves):
+                for i_spoke in range(self.n_spokes_per_interleaf):
+                    for i_readout in range(self.n_readouts_per_spoke):
+                        self.points[i_readout,i_spoke,i_interleaf].t = self.total_time
+                        self.total_time += self.time_per_acquisition
