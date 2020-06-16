@@ -1,26 +1,24 @@
+from Objects.Patterns import SpiralPhyllotaxisPattern, ArchimedeanSpiralUniform, ArchimedeanSpiralNonUniform
 from Tools.Heart import Heart
-from Tools.fibonacci import find_best_number_of_points
-from Objects.Patterns import SpiralPhyllotaxisPattern
-N_target = 30000
-time_per_acquisition = 0.006
-fibonacci = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233,
-             377, 610, 987, 1597, 2584, 4181, 6765, 10946, 17711]
 
-# cardiac phases
-heart = Heart(N_target*time_per_acquisition * 2, 0.05)
+n_spokes = 5
+n_interleaves = 8
 
-# articles to show n_interleaf does not change pattern, just interleave style
+phyllo = SpiralPhyllotaxisPattern(n_readouts_per_spoke=1,n_spokes_per_interleaf=n_spokes,n_interleaves=n_interleaves,alternated_spokes=False)
+phyllo.draw(colour='first_interleaf',marker_size=10,display=True)
 
+arch_uni = ArchimedeanSpiralUniform(n_readouts_per_spoke=1,n_spokes_per_interleaf=n_spokes,n_interleaves=n_interleaves)
+arch_uni.draw(colour='first_interleaf',marker_size=10,display=True)
 
-def only_first_cardiac_phase(point):
-    return point.cardiac_phase == 0
+arch_nonuni = ArchimedeanSpiralNonUniform(n_readouts_per_spoke=1,n_spokes_per_interleaf=n_spokes,n_interleaves=n_interleaves)
+arch_nonuni.draw(colour='first_interleaf',marker_size=10,display=True)
 
+### temporal resolution
+temporal_resolution = 0.06
+beating_time = 2 * n_spokes*n_interleaves * temporal_resolution
 
-for fibo in fibonacci:
-    for add_readout_ends in [True, False]:
-        N = find_best_number_of_points(N_target, fibo)
-        test = SpiralPhyllotaxisPattern(
-            N*fibo, fibo, time_per_acquisition=time_per_acquisition, alternated_points=True)
-        test.separate_in_time_phases(heart.beats)
-        test.draw(title='N_total = {} , {} interleaf'.format(N*fibo, fibo), alpha=0.3, marker_size=1,
-                  colour='cardiac_phase', filter_func=only_first_cardiac_phase, display=True)
+heart = Heart(beating_time, temporal_phase_resolution=temporal_resolution, average_bps=1., bps_rms=0.0)
+
+phyllo = SpiralPhyllotaxisPattern(n_readouts_per_spoke=1,n_spokes_per_interleaf=n_spokes,n_interleaves=n_interleaves,alternated_spokes=True,time_per_acquisition=0.006)
+phyllo.separate_in_time_phases(heart.beats)
+phyllo.draw(title='N interleaves = {} ; {} readouts per interleaf ; Ntot = {}'.format(phyllo.n_interleaves, phyllo.n_points/phyllo.n_interleaves, phyllo.n_points), alpha=0.3, marker_size=10, colour='cardiac_phase', display=True)

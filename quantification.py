@@ -2,7 +2,7 @@ from Objects.Patterns import SpiralPhyllotaxisPattern, ArchimedeanSpiralUniform,
 from Tools.fibonacci import make_fibonacci
 import matplotlib.pyplot as plt
 
-fibonacci = make_fibonacci(13)
+fibonacci = make_fibonacci(5)
 
 averages = []
 averages_spir_uni = []
@@ -14,15 +14,16 @@ phyllos = []
 
 for fibo in fibonacci:
     print('starting fibo = {}'.format(fibo))
-    phyllo = SpiralPhyllotaxisPattern(fibo*34, fibo, alternated_points=False)
+    phyllo = SpiralPhyllotaxisPattern(n_readouts_per_spoke=1,n_spokes_per_interleaf=34,n_interleaves=fibo,alternated_spokes=False)
+    # phyllo = SpiralPhyllotaxisPattern(fibo*34, fibo, alternated_points=False)
     phyllos.append(phyllo)
     averages.append(phyllo.compute_average_distance_between_spokes())
     rsds.append(phyllo.compute_rsd())
-    spir_uni = ArchimedeanSpiralUniform(fibo*34, fibo)
+    spir_uni = ArchimedeanSpiralUniform(n_readouts_per_spoke=1,n_spokes_per_interleaf=34,n_interleaves=fibo)
     averages_spir_uni.append(
         spir_uni.compute_average_distance_between_spokes())
     rsds_spir_uni.append(spir_uni.compute_rsd())
-    spir_nonuni = ArchimedeanSpiralNonUniform(fibo*34, fibo)
+    spir_nonuni = ArchimedeanSpiralNonUniform(n_readouts_per_spoke=1,n_spokes_per_interleaf=34,n_interleaves=fibo)
     averages_spir_nonuni.append(
         spir_nonuni.compute_average_distance_between_spokes())
     rsds_spir_nonuni.append(spir_nonuni.compute_rsd())
