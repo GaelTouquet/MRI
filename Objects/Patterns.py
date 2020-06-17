@@ -109,12 +109,12 @@ class Pattern:
             y = max(min(self.points[i].y()/norm_factor,0.5),-0.5)
             z = max(min(self.points[i].z()/norm_factor,0.5),-0.5)
             savearray[i][:] = x, y, z
-        savedict = {name:savearray}
         if os.path.isfile(path):
-            with open(path,'ab') as f:
-                savemat(f,savedict)
+            savedict = loadmat(path)
+            savedict[name] = savearray
         else:
-            savemat(path,savedict)
+            savedict = {name:savearray}
+        savemat(path,savedict)
 
 class CustomPattern(Pattern):
     """Pattern with user-defined points."""
