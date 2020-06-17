@@ -104,9 +104,9 @@ class Pattern:
         shape.append(3)
         savearray = np.zeros(shape,dtype=dtype)
         for i in np.ndindex(self.points.shape):
-            x = min(self.points[i].x()/norm_factor,0.5)
-            y = min(self.points[i].y()/norm_factor,0.5)
-            z = min(self.points[i].z()/norm_factor,0.5)
+            x = max(min(self.points[i].x()/norm_factor,0.5),-0.5)
+            y = max(min(self.points[i].y()/norm_factor,0.5),-0.5)
+            z = max(min(self.points[i].z()/norm_factor,0.5),-0.5)
             savearray[i][:] = x, y, z
         savedict = {name:savearray}
         savemat(path,savedict)
