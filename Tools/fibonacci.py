@@ -1,3 +1,10 @@
+import math
+
+golden_angle = math.pi * (3 - (5**0.5))
+#TODO find a way to compute the 2D golden angle with a better precision
+golden_angle_2D_1 = 0.4656
+golden_angle_2D_2 = 0.6823
+
 def make_fibonacci(length):
      if length == 1:
           return [1]

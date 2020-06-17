@@ -1,13 +1,14 @@
 import math
 import copy
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat, savemat
 from Objects.Point import Point, distance
-from Tools.coordinates import golden_angle
+from Tools.fibonacci import golden_angle, golden_angle_2D_1, golden_angle_2D_2
 
 class Pattern:
-    """Base class for all patterns."""
+    """Base class for all patterns. Holds useful methods"""
     def __init__(self):
         self.points = np.array([],dtype=Point)
 
@@ -109,12 +110,18 @@ class Pattern:
             z = max(min(self.points[i].z()/norm_factor,0.5),-0.5)
             savearray[i][:] = x, y, z
         savedict = {name:savearray}
-        savemat(path,savedict)
+        if os.path.isfile(path):
+            with open(path,'ab') as f:
+                savemat(f,savedict)
+        else:
+            savemat(path,savedict)
 
 class CustomPattern(Pattern):
     """Pattern with user-defined points."""
     def __init__(self, points):
         self.points = points
+
+##### Functional patterns
 
 class FunctionalPattern(Pattern):
     """Class for pattern that use a function to derive the position of its points. self.point_function should return a point for each iteration value over n_points."""
@@ -134,7 +141,9 @@ class FunctionalPattern(Pattern):
                 self.points[n].t = self.total_time
                 self.total_time += self.time_per_acquisition
 
-class InterleavedPattern(Pattern):
+##### Interleaved patterns
+
+class InterleavedFunctionalPattern(Pattern):
     """Virtual class to hold all the methods useful for the interleaved patterns."""
     def __init__(self, interleaf_function, spoke_function, readout_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=True):
         self.interleaf_function = interleaf_function
@@ -175,7 +184,9 @@ class InterleavedPattern(Pattern):
         self.average_distance_between_readouts = average
         return average
 
-class SphericalCentralPattern(InterleavedPattern):
+### Spherical central patterns
+
+class SphericalCentralPattern(InterleavedFunctionalPattern):
     """Class to make and hold spherical patterns."""
     def __init__(self, interleaf_function, spoke_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=None, alternated_spokes=False, rmax = 1.):
         self.rmax = rmax
@@ -185,10 +196,12 @@ class SphericalCentralPattern(InterleavedPattern):
         if k_readout == 0:
             return first_readout
         else:
-            r = first_readout.r()*(1.-2*((k_readout+1)/(self.n_readouts_per_spoke-1)))
+            r = first_readout.r()*(1.-2*((k_readout)/(self.n_readouts_per_spoke-1)))
             phi = first_readout.phi()
             theta = first_readout.theta()
             return Point(r=r,phi=phi,theta=theta)
+
+# Specific central patterns
 
 class ArchimedeanSpiralUniform(SphericalCentralPattern):
     """https://onlinelibrary.wiley.com/doi/pdf/10.1002/mrm.22898 and https://onlinelibrary.wiley.com/doi/epdf/10.1002/mrm.20128"""
@@ -242,7 +255,9 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     def interleaf_function(self, i_interleaf):
         return None
 
-class InterleavedMatLabPattern(InterleavedPattern):
+# Interleaved pattern from matlab format
+
+class InterleavedMatLabPattern(InterleavedFunctionalPattern):
     """Class to load a pattern from a saved MatLab file."""
     def __init__(self, path, name, time_per_acquisition=None, alternated_spokes=True):
         matlab_contents = loadmat(path)
@@ -269,3 +284,37 @@ class InterleavedMatLabPattern(InterleavedPattern):
                     for i_readout in range(self.n_readouts_per_spoke):
                         self.points[i_readout,i_spoke,i_interleaf].t = self.total_time
                         self.total_time += self.time_per_acquisition
+
+### 2D Stacks Patterns
+
+class StackPattern(InterleavedFunctionalPattern):
+    """Base class for 2D Stacked patterns."""
+    def __init__(self, spoke_function, readout_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, total_height=1., time_per_acquisition=None, alternated_spokes=True):
+        self.total_height = total_height
+        super().__init__(self.interleaf_function, spoke_function, readout_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes)
+
+    def interleaf_function(self, i_interleaf):
+        return Point(x=0,y=0,z=self.total_height*(1-2*((i_interleaf)/(self.n_interleaves-1))))
+
+# Specific stack patterns
+
+class StackOfStarsPattern(StackPattern):
+    """Stack of stars pattern."""
+    def __init__(self, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, total_height=1., rmax=1., time_per_acquisition=None, alternated_spokes=True):
+        self.rmax = rmax
+        super().__init__(self.spoke_function, self.readout_function, n_readouts_per_spoke, n_spokes_per_interleaf, n_interleaves, total_height=total_height, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes)
+
+    def spoke_function(self, i_interleaf,first_spoke,i_spoke):
+        z = first_spoke.z()
+        r_cyl = self.rmax
+        phi = i_spoke*math.pi/self.n_spokes_per_interleaf
+        return Point(r_cyl=r_cyl,phi=phi,z=z)
+
+    def readout_function(self,i_interleaf,first_spoke,i_spoke,first_readout,k_readout):
+        if k_readout==0:
+            return first_readout
+        else:
+            z = first_readout.z()
+            phi = first_readout.phi()
+            r_cyl = first_readout.r_cyl()*(1.-2*((k_readout)/(self.n_readouts_per_spoke-1)))
+            return Point(r_cyl=r_cyl,phi=phi,z=z)
