@@ -1,7 +1,5 @@
 import math
 
-golden_angle = math.pi * (3 - (5**0.5))
-
 def x_from_spherical(r,phi,theta):
      return r * math.sin(theta) * math.cos(phi)
 
