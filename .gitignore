@@ -4,3 +4,4 @@
 *.mat
 sandbox.*
 *.code-workspace
+.vscode*
