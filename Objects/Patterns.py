@@ -255,6 +255,18 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
     def interleaf_function(self, i_interleaf):
         return None
 
+class MultiGoldenRadial(SphericalCentralPattern):
+    """https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.21837"""
+    def __init__(self, n_readouts_per_spoke, n_spokes, time_per_acquisition=None, alternated_spokes=True, rmax=1.0):
+        super().__init__(interleaf_function=lambda x: None, spoke_function=self.spoke_function, n_readouts_per_spoke=n_readouts_per_spoke, n_spokes_per_interleaf=n_spokes, n_interleaves=1, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes, rmax=rmax)
+
+    def spoke_function(self, i_interleaf,first_spoke,i_spoke):
+        z = (i_spoke * golden_angle_2D_1) % 1
+        phi = i_spoke * golden_angle_2D_2
+        r = self.rmax
+        r_cyl = math.sqrt(r*r - z*z)
+        return Point(r_cyl=r_cyl, phi=phi, z=z)
+
 # Interleaved pattern from matlab format
 
 class InterleavedMatLabPattern(InterleavedFunctionalPattern):
