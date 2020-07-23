@@ -14,8 +14,17 @@ class Pattern:
 
     def clone(self, filter_func):
         """Create a new pattern which is copied from the pattern but all points pass the given filter function."""
-        new_pattern = copy.deepcopy(self)
-        new_pattern.points = copy.deepcopy(self.points)
+        if filter_func:
+            indexes = []
+            for i in np.ndindex(self.points.shape):
+                if filter_func(self.points[i],i,self.points):
+                    indexes.append(i)
+            points = np.zeros(len(indexes),dtype=Point)
+            for i in range(len(indexes)):
+                points[i] = self.points[indexes[i]]
+        else:
+            points = copy.deepcopy(self.points)
+        return CustomPattern(points)
 
     def get_points(self, filter_func = None, extra_vars = []):
         """Get list of matplotlib-usable points that pass the filter function."""
@@ -120,6 +129,7 @@ class CustomPattern(Pattern):
     """Pattern with user-defined points."""
     def __init__(self, points):
         self.points = points
+        self.n_points = self.points.size
 
 ##### Functional patterns
 
@@ -171,7 +181,9 @@ class InterleavedFunctionalPattern(Pattern):
                     else:
                         k_readout = i_readout
                     self.points[i_readout,i_spoke,i_interleaf] = self.readout_function(i_interleaf,first_spoke,i_spoke,first_readout,k_readout)
-                    if self.time_per_acquisition:
+                    if (self.alternated_spokes and (i_spoke % 2 == 1)) and self.n_readouts_per_spoke==1:
+                        self.points[i_readout,i_spoke,i_interleaf].invert()
+                    if self.time_per_acquisition and i_readout==0:
                         self.points[i_readout,i_spoke,i_interleaf].t = self.total_time
                         self.total_time += self.time_per_acquisition
 
@@ -183,6 +195,21 @@ class InterleavedFunctionalPattern(Pattern):
         average = average / (len(points_in_first_interleaf)-1)
         self.average_distance_between_readouts = average
         return average
+
+    def separate_in_time_phases(self, time_dict, cycle_name = 'cardiac', phases_names = None, temporal_resolution=None):
+        for i in np.ndindex(self.points.shape):
+            point = self.points[i]
+            if not hasattr(point,'t'):
+                continue
+            phase = 0
+            beat = 0
+            while point.t > time_dict[beat][phase]:
+                if phase == len(time_dict[beat])-1:
+                    phase = 0
+                    beat += 1
+                else:
+                    phase += 1
+            setattr(point, '{}_phase'.format(cycle_name), phase if not phases_names else phases_names[phase])
 
 ### Spherical central patterns
 

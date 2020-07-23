@@ -19,6 +19,7 @@ class Heart:
         return beat_time
 
     def play_your_funky_music(self):
+        random.seed(0xdeadbeef)
         self.beats = {}
         self.n_beats_so_far = 0
         self.time_so_far = self.starting_time
