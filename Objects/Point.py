@@ -47,7 +47,7 @@ class Point:
         self._z = -1. * self.z()
 
     def __str__(self):
-        return 'x:{},y:{},z:{}'.format(self._x,self._y,self._z)
+        return 'x:{},y:{},z:{}\nr:{},phi:{},theta:{}'.format(self._x,self._y,self._z,self.r(),self.phi(),self.theta())
 
 def distance(point_a,point_b):
     x = point_a.x() - point_b.x()

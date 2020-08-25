@@ -176,12 +176,15 @@ class InterleavedFunctionalPattern(Pattern):
             for i_spoke in range(self.n_spokes_per_interleaf):
                 first_readout = self.spoke_function(i_interleaf,first_spoke,i_spoke)
                 for i_readout in range(self.n_readouts_per_spoke):
-                    if self.alternated_spokes and (i_spoke % 2 == 1):
-                        k_readout = (self.n_readouts_per_spoke-1) - i_readout
-                    else:
-                        k_readout = i_readout
-                    self.points[i_readout,i_spoke,i_interleaf] = self.readout_function(i_interleaf,first_spoke,i_spoke,first_readout,k_readout)
-                    if (self.alternated_spokes and (i_spoke % 2 == 1)) and self.n_readouts_per_spoke==1:
+                    # if self.alternated_spokes and (i_spoke % 2 == 0):
+                    #     k_readout = (self.n_readouts_per_spoke-1) - i_readout
+                    # else:
+                    #     k_readout = i_readout
+                    # self.points[i_readout,i_spoke,i_interleaf] = self.readout_function(i_interleaf,first_spoke,i_spoke,first_readout,k_readout)
+                    # if (self.alternated_spokes and (i_spoke % 2 == 0)) and self.n_readouts_per_spoke==1:
+                    #     self.points[i_readout,i_spoke,i_interleaf].invert()
+                    self.points[i_readout,i_spoke,i_interleaf] = self.readout_function(i_interleaf,first_spoke,i_spoke,first_readout,i_readout)
+                    if (self.alternated_spokes and (i_spoke % 2 == 0)) and i_readout==0:
                         self.points[i_readout,i_spoke,i_interleaf].invert()
                     if self.time_per_acquisition and i_readout==0:
                         self.points[i_readout,i_spoke,i_interleaf].t = self.total_time
@@ -223,7 +226,7 @@ class SphericalCentralPattern(InterleavedFunctionalPattern):
         if k_readout == 0:
             return first_readout
         else:
-            r = first_readout.r()*(1.-2*((k_readout)/(self.n_readouts_per_spoke-1)))
+            r = (first_readout.r()/(self.n_readouts_per_spoke/2))*((self.n_readouts_per_spoke/2) - k_readout) #first_readout.r()*(1.-2*((k_readout)/(self.n_readouts_per_spoke-1)))
             phi = first_readout.phi()
             theta = first_readout.theta()
             return Point(r=r,phi=phi,theta=theta)
@@ -273,11 +276,12 @@ class SpiralPhyllotaxisPattern(SphericalCentralPattern):
         super().__init__(interleaf_function=self.interleaf_function, spoke_function=self.spoke_function, n_readouts_per_spoke=n_readouts_per_spoke, n_spokes_per_interleaf=n_spokes_per_interleaf, n_interleaves=n_interleaves, time_per_acquisition=time_per_acquisition, alternated_spokes=alternated_spokes, rmax=rmax)
 
     def spoke_function(self, i_interleaf,first_spoke,i_spoke):
-        n = i_spoke*self.n_interleaves + i_interleaf
+        n = i_spoke*self.n_interleaves + i_interleaf +1
         r = self.rmax
         theta = (math.pi/2) * math.sqrt(n/(self.n_interleaves*self.n_spokes_per_interleaf))
         phi = n * golden_angle
-        return Point(r=r, theta=theta, phi=phi)
+        tmp_point = Point(r=r, theta=theta, phi=phi)
+        return Point(x=tmp_point.y(),y=tmp_point.x(),z=tmp_point.z())
 
     def interleaf_function(self, i_interleaf):
         return None

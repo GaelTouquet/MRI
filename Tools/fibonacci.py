@@ -1,6 +1,6 @@
 import math
 
-golden_angle = math.pi * (3 - (5**0.5))
+golden_angle = math.pi * (3 - (5**0.5)) #2.4#137.51*2*math.pi/360#
 #TODO find a way to compute the 2D golden angle with a better precision
 golden_angle_2D_1 = 0.4656
 golden_angle_2D_2 = 0.6823
