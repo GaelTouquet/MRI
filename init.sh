@@ -1,6 +1,6 @@
-export GEOMETRY=$PWD
-export PYTHONPATH=$GEOMETRY/..:$PYTHONPATH
-export PATH=$GEOMETRY:$PATH
+export MRI=$PWD
+export PYTHONPATH=$MRI/..:$PYTHONPATH
+export PATH=$MRI:$PATH
 
 # Install all dependencies listed in the requirements.txt file
-pip install -r requirements.txt
+pip3 install -r requirements.txt

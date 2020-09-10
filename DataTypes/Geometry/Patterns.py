@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat, savemat
-from Objects.Point import Point, distance
+from DataTypes.Geometry.Point import Point, distance
 from Tools.fibonacci import golden_angle, golden_angle_2D_1, golden_angle_2D_2
 
 class Pattern:
@@ -298,9 +298,9 @@ class MultiGoldenRadial(SphericalCentralPattern):
 
 class InterleavedMatLabPattern(InterleavedFunctionalPattern):
     """Class to load a pattern from a saved MatLab file."""
-    def __init__(self, path, name, time_per_acquisition=None, alternated_spokes=True):
+    def __init__(self, path, time_per_acquisition=None, alternated_spokes=True):
         matlab_contents = loadmat(path)
-        matlab_pattern = matlab_contents[name]
+        matlab_pattern = matlab_contents['k']
         del(matlab_contents)
         shape = matlab_pattern.shape
         n_readouts_per_spoke = shape[0]
@@ -321,8 +321,8 @@ class InterleavedMatLabPattern(InterleavedFunctionalPattern):
             for i_interleaf in range(self.n_interleaves):
                 for i_spoke in range(self.n_spokes_per_interleaf):
                     for i_readout in range(self.n_readouts_per_spoke):
-                        self.points[i_readout,i_spoke,i_interleaf].t = self.total_time
-                        self.total_time += self.time_per_acquisition
+                        self.points[i_readout,i_spoke,i_interleaf].t = self.total_time + i_readout*(self.time_per_acquisition/self.n_readouts_per_spoke)
+                    self.total_time += self.time_per_acquisition
 
 ### 2D Stacks Patterns
 
