@@ -1,5 +1,5 @@
 import math
-from Tools.coordinates import *
+from MRI.Tools.coordinates import *
 class Point:
     def __init__(self, **kwargs):
         if ('x' in kwargs) and ('y' in kwargs) and ('z' in kwargs):

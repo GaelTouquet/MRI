@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 from scipy.io import loadmat, savemat
-from DataTypes.Geometry.Patterns import InterleavedMatLabPattern
+from MRI.DataTypes.Geometry.Patterns import InterleavedMatLabPattern
 
 class KData(InterleavedMatLabPattern):
     """Pattern that also holds the data for each points"""

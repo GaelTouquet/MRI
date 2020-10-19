@@ -4,8 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import loadmat, savemat
-from DataTypes.Geometry.Point import Point, distance
-from Tools.fibonacci import golden_angle, golden_angle_2D_1, golden_angle_2D_2
+from MRI.DataTypes.Geometry.Point import Point, distance
+from MRI.Tools.fibonacci import golden_angle, golden_angle_2D_1, golden_angle_2D_2
 
 class Pattern:
     """Base class for all patterns. Holds useful methods"""
